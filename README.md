@@ -71,6 +71,10 @@ function updateUserList() {
   broadcast({ type: 'user_list', users: usernames });
 }
 
+function getTime() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 wss.on('connection', (ws) => {
   console.log('New connection...');
 
@@ -94,17 +98,21 @@ wss.on('connection', (ws) => {
 
       if (msg.type === 'private_message') {
         const receiver = users.get(msg.to);
+        const timestamp = getTime();
+
         if (receiver && receiver.readyState === WebSocket.OPEN) {
           receiver.send(JSON.stringify({
             type: 'private_message',
             from: ws.username,
             message: msg.message,
+            timestamp
           }));
 
           ws.send(JSON.stringify({
             type: 'delivered',
             to: msg.to,
-            message: msg.message
+            message: msg.message,
+            timestamp
           }));
         } else {
           ws.send(JSON.stringify({
@@ -140,7 +148,7 @@ wss.on('connection', (ws) => {
 
 const PORT = 8080;
 server.listen(PORT, () =>
-  console.log(`🚀 Chat server (with typing + delivery) running at http://localhost:${PORT}`)
+  console.log(`🚀 Chat server (with timestamps) running at http://localhost:${PORT}`)
 );
 ```
 
@@ -151,10 +159,10 @@ server.listen(PORT, () =>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Chat with Delivery + Typing</title>
+  <title>Chat with Delivery + Typing + Timestamps</title>
   <style>
     body {
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       display: flex;
       justify-content: center;
       margin: 0;
@@ -201,6 +209,11 @@ server.listen(PORT, () =>
     .user:hover {
       background-color: #eee;
     }
+    .timestamp {
+      color: gray;
+      font-size: 0.8em;
+      margin-left: 5px;
+    }
   </style>
 </head>
 <body>
@@ -241,14 +254,14 @@ server.listen(PORT, () =>
         addMessage(`⚙️ ${msg.message}`, 'gray');
       }
       else if (msg.type === 'private_message') {
-        addMessage(`📩 From ${msg.from}: ${msg.message}`);
+        addMessage(`📩 From ${msg.from}: ${msg.message}`, 'black', msg.timestamp);
         showTyping('');
       }
       else if (msg.type === 'user_list') {
         updateUserList(msg.users);
       }
       else if (msg.type === 'delivered') {
-        addMessage(`✅ Delivered to ${msg.to}: ${msg.message}`, 'green');
+        addMessage(`✅ Delivered to ${msg.to}: ${msg.message}`, 'green', msg.timestamp);
       }
       else if (msg.type === 'typing') {
         showTyping(`${msg.from} is typing...`);
@@ -273,7 +286,8 @@ server.listen(PORT, () =>
       const message = document.getElementById('message').value.trim();
       if (to && message) {
         socket.send(JSON.stringify({ type: 'private_message', to, message }));
-        addMessage(`You → ${to}: ${message}`, 'blue');
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        addMessage(`You → ${to}: ${message}`, 'blue', time);
         document.getElementById('message').value = '';
       }
     }
@@ -285,10 +299,9 @@ server.listen(PORT, () =>
       }
     }
 
-    function addMessage(text, color = 'black') {
+    function addMessage(text, color = 'black', time = '') {
       const div = document.createElement('div');
-      div.textContent = text;
-      div.style.color = color;
+      div.innerHTML = `<span style="color:${color}">${text}</span> <span class="timestamp">(${time})</span>`;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
