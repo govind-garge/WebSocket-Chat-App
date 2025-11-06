@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Chat with Delivery + Typing</title>
+  <title>Chat with Delivery + Typing + Timestamps</title>
   <style>
     body {
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       display: flex;
       justify-content: center;
       margin: 0;
@@ -52,6 +52,11 @@
     .user:hover {
       background-color: #eee;
     }
+    .timestamp {
+      color: gray;
+      font-size: 0.8em;
+      margin-left: 5px;
+    }
   </style>
 </head>
 <body>
@@ -92,14 +97,14 @@
         addMessage(`⚙️ ${msg.message}`, 'gray');
       }
       else if (msg.type === 'private_message') {
-        addMessage(`📩 From ${msg.from}: ${msg.message}`);
+        addMessage(`📩 From ${msg.from}: ${msg.message}`, 'black', msg.timestamp);
         showTyping('');
       }
       else if (msg.type === 'user_list') {
         updateUserList(msg.users);
       }
       else if (msg.type === 'delivered') {
-        addMessage(`✅ Delivered to ${msg.to}: ${msg.message}`, 'green');
+        addMessage(`✅ Delivered to ${msg.to}: ${msg.message}`, 'green', msg.timestamp);
       }
       else if (msg.type === 'typing') {
         showTyping(`${msg.from} is typing...`);
@@ -124,7 +129,8 @@
       const message = document.getElementById('message').value.trim();
       if (to && message) {
         socket.send(JSON.stringify({ type: 'private_message', to, message }));
-        addMessage(`You → ${to}: ${message}`, 'blue');
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        addMessage(`You → ${to}: ${message}`, 'blue', time);
         document.getElementById('message').value = '';
       }
     }
@@ -136,10 +142,9 @@
       }
     }
 
-    function addMessage(text, color = 'black') {
+    function addMessage(text, color = 'black', time = '') {
       const div = document.createElement('div');
-      div.textContent = text;
-      div.style.color = color;
+      div.innerHTML = `<span style="color:${color}">${text}</span> <span class="timestamp">(${time})</span>`;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }

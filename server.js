@@ -10,7 +10,6 @@ app.use(express.static('public'));
 
 const users = new Map();
 
-// Broadcast helper
 function broadcast(data) {
   const message = JSON.stringify(data);
   for (const ws of wss.clients) {
@@ -25,6 +24,10 @@ function updateUserList() {
   broadcast({ type: 'user_list', users: usernames });
 }
 
+function getTime() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 wss.on('connection', (ws) => {
   console.log('New connection...');
 
@@ -32,7 +35,6 @@ wss.on('connection', (ws) => {
     try {
       const msg = JSON.parse(data);
 
-      // 1️⃣ Login
       if (msg.type === 'login') {
         if (users.has(msg.username)) {
           ws.send(JSON.stringify({ type: 'system', message: 'Username already taken!' }));
@@ -47,22 +49,23 @@ wss.on('connection', (ws) => {
         return;
       }
 
-      // 2️⃣ Private message
       if (msg.type === 'private_message') {
         const receiver = users.get(msg.to);
+        const timestamp = getTime();
+
         if (receiver && receiver.readyState === WebSocket.OPEN) {
-          // Send message to receiver
           receiver.send(JSON.stringify({
             type: 'private_message',
             from: ws.username,
             message: msg.message,
+            timestamp
           }));
 
-          // Send delivery status back to sender
           ws.send(JSON.stringify({
             type: 'delivered',
             to: msg.to,
-            message: msg.message
+            message: msg.message,
+            timestamp
           }));
         } else {
           ws.send(JSON.stringify({
@@ -72,7 +75,6 @@ wss.on('connection', (ws) => {
         }
       }
 
-      // 3️⃣ Typing indicator
       if (msg.type === 'typing') {
         const receiver = users.get(msg.to);
         if (receiver && receiver.readyState === WebSocket.OPEN) {
@@ -99,5 +101,5 @@ wss.on('connection', (ws) => {
 
 const PORT = 8080;
 server.listen(PORT, () =>
-  console.log(`🚀 Chat server (with typing + delivery) running at http://localhost:${PORT}`)
+  console.log(`🚀 Chat server (with timestamps) running at http://localhost:${PORT}`)
 );
